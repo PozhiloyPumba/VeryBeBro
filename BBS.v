@@ -1,4 +1,4 @@
-`timescale 10ns/100ps
+`timescale 1ns/1ns
 
 module mod_multiplier
 #(
@@ -8,24 +8,28 @@ module mod_multiplier
 (
 	input [SIZE-1:0] x,
 	input reset,
+	input clk,
 	output [SIZE-1:0] out
-)
+);
 
 reg [SIZE-1:0] tmp1;
 reg [SIZE-1:0] tmp2;
+assign out = tmp1;
 
 integer i;
 
-for (i = 0; i < SIZE; i = i + 1)
-begin
-	if (reset)
-	begin 
-		{tmp1, tmp2} = {2 * SIZE {1'b0}};
-	end
-	else
-	begin
-		tmp1 = {SIZE{1'b0}};
 
+always @(posedge clk)
+begin
+	if (reset) {tmp1, tmp2} = {2 * SIZE {1'b0}};
+	else begin
+		tmp1 = {SIZE {1'b0}};
+		for (i = SIZE-1; i >= 0; i = i - 1) begin
+			tmp1 = tmp1 << 1;
+			if (tmp1 >= MOD) tmp1 = tmp1 - MOD;
+			if (x[i]) tmp1 = tmp1 + x;
+			if (tmp1 >= MOD) tmp1 = tmp1 -  MOD;
+    		end
 	end
 end
 endmodule
@@ -36,34 +40,42 @@ module main
 	input clk,
 	input reset,
 	output [15:0] result
-)
+);
 reg [15:0] seed;
-seed = 16'b11
+
+always @(posedge clk) if (reset) seed = 16'd0;
+initial begin
+	#10 seed = 16'd200;
+	#10 seed = 16'd201;
+	#10 seed = 16'd202;
+	#10 seed = 16'd203;
+end
 
 mod_multiplier mod_multiplier
 (
 	.x(seed),
+	.clk(clk),
 	.reset(reset),
 	.out(result)
 );
 
 endmodule
 
-module test
+module test();
 
-wire clk;
-wire reset;
+reg clk;
+reg reset;
 wire [15:0] result;
 
 initial
 begin
-	#0 clk = 1'b0;
-	#0 reset = 1'b0;
+	#1 clk = 1'b0;
+	#1 reset = 1'b0;
 end
 
 always #1 clk = ~clk;
 initial #3 reset = 1'b1;
-initial #5 reset = 1'b1;
+initial #5 reset = 1'b0;
 
 main main
 (
@@ -72,6 +84,6 @@ main main
 	.result(result)
 );
 
-$display("%d", result);
+initial $display("%d", result);
 
 endmodule
