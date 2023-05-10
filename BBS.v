@@ -1,4 +1,4 @@
-`timescale 1ns/1ns
+`timescale 10ns/1ns
 
 module mod_multiplier
 #(
@@ -12,20 +12,18 @@ module mod_multiplier
 	output [SIZE-1:0] out
 );
 
-reg [SIZE-1:0] tmp1;
-reg [SIZE-1:0] tmp2;
-assign out = tmp1;
+reg [SIZE:0] tmp1;
+assign out = tmp1[SIZE-1:0];
 
 integer i;
 
-
 always @(posedge clk)
 begin
-	if (reset) {tmp1, tmp2} = {2 * SIZE {1'b0}};
+	if (reset) tmp1 = {SIZE {1'b0}};
 	else begin
 		tmp1 = {SIZE {1'b0}};
 		for (i = SIZE-1; i >= 0; i = i - 1) begin
-			tmp1 = tmp1 << 1;
+			tmp1 = tmp1 << 1'b1;
 			if (tmp1 >= MOD) tmp1 = tmp1 - MOD;
 			if (x[i]) tmp1 = tmp1 + x;
 			if (tmp1 >= MOD) tmp1 = tmp1 -  MOD;
@@ -46,9 +44,9 @@ reg [15:0] seed;
 always @(posedge clk) if (reset) seed = 16'd0;
 initial begin
 	#10 seed = 16'd200;
-	#10 seed = 16'd201;
-	#10 seed = 16'd202;
-	#10 seed = 16'd203;
+	#10 seed = 16'd40600;
+	#10 seed = 16'd13089;
+	#10 seed = 16'd884;
 end
 
 mod_multiplier mod_multiplier
@@ -84,6 +82,13 @@ main main
 	.result(result)
 );
 
-initial $display("%d", result);
+initial
+begin
+	#15 $display("%d", result);
+	#10 $display("%d", result);
+	#10 $display("%d", result);
+	#10 $display("%d", result);
+	#100 $finish;
+end
 
 endmodule
