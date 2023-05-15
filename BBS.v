@@ -1,4 +1,4 @@
-`timescale 10ns/1ns
+`timescale 1ns/1ns
 
 module main(
 	input clk, 
@@ -27,7 +27,7 @@ button_handler_down btn_handler_down_gen (
 number_counter number_counter(
 	.clk(clk),
 	.reset(reset),
-	.btn_flg(btn_flag_gen),
+	.btn_flg(btn_flg_gen),
 	.result(number)
 );
 show_number show_number (
@@ -56,13 +56,15 @@ assign leds = leds_cp;
 
 always @(posedge clk) begin
 	if (reset) state <= 5'b0;
-	else if (btn_flg_show) state <= state + 1'b1;
+	else if (btn_flg_show) begin
+		state <= state + 1'b1;
+	end
 end
 
 genvar Gi;
 generate 	
 	for(Gi = 0; Gi < 32; Gi = Gi + 1) begin: gen_show_i
-		always @(posedge clk) begin
+		always @(posedge btn_flg_show) begin
 			if (Gi == state) begin
 				leds_cp <= number[Gi*8+7:Gi*8];
 			end
@@ -93,34 +95,39 @@ module mod_multiplier
 );
 
 reg [SIZE:0] tmp1;
+reg [SIZE:0] tmp2;
 assign out = tmp1[SIZE-1:0];
+//assign tmp = tmp2[SIZE-1:0];
 
 integer i;
 
 always @(posedge clk)
 begin
-	tmp1 = {SIZE {1'b0}};
+	tmp2 = {SIZE {1'b0}};
 	for (i = SIZE-1; i >= 0; i = i - 1) begin
-		tmp1 = tmp1 << 1'b1;
-		if (tmp1 >= MOD) tmp1 = tmp1 - MOD;
-		if (x[i]) tmp1 = tmp1 + x;
-		if (tmp1 >= MOD) tmp1 = tmp1 -  MOD;
+		tmp2 = tmp2 << 1'b1;
+		if (tmp2 >= MOD) tmp2 = tmp2 - MOD;
+		if (x[i]) tmp2 = tmp2 + x;
+		if (tmp2 >= MOD) tmp2 = tmp2 -  MOD;
 	end
+	tmp1 <= tmp2;
 end
 endmodule
 //==============================================================
 module number_counter
+#(
+	parameter SIZE=256
+)
 (
 	input clk,
 	input reset,
 	input btn_flg,
-	output [255:0] result
+	output [SIZE-1:0] result
 );
 reg [15:0] seed;
-reg [255:0] number;
-reg [8:0] bcounter;
+reg [SIZE-1:0] number;
+reg [9:0] bcounter;
 wire [15:0] temporary;
-wire btn_flg;
 reg [0:0] flg;
 
 integer j;
@@ -129,16 +136,17 @@ assign result = number;
 
 always @(posedge clk) begin
 	if (reset) begin
-		bcounter = {8 {1'b0}};
+		bcounter = {9 {1'b0}};
 		seed     = 16'd884;
-		number   = {256 {1'b0}};
+		number   = {SIZE {1'b0}};
 	end else begin
 		if (btn_flg) flg <= 1'b1;
 		seed <= temporary;
 		if (flg) begin
-			if (bcounter != 9'd256) begin	
+			if (bcounter != SIZE<<1) begin
 				bcounter <= bcounter + 1'b1;
-				number <= (number << 1) | (seed[0]);
+				if (bcounter[0] == 1'b1)
+					number <= (number << 1) | (seed[0]);
 			end else begin
 				bcounter <= 9'b0;
 				flg <= 1'b0;
@@ -210,10 +218,12 @@ endmodule
 //==============================================================
 module test();
 
-reg clk;
-reg reset;
-reg btn_gen;
-reg btn_show;
+reg  clk;
+reg  reset;
+reg  btn_gen;
+reg  btn_show;
+reg  [7:0] led;
+reg  [15:0] dig;
 
 initial
 begin
@@ -223,7 +233,20 @@ end
 
 always #1 clk = ~clk;
 initial #3 reset = 1'b1;
-initial #5 reset = 1'b0;
+initial #4 reset = 1'b0;
+initial #100 btn_gen = 1'b1;
+initial #150 btn_gen = 1'b0;
+
+initial begin 
+	#1250 btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+end
 
 main main
 (
@@ -236,9 +259,6 @@ main main
 	.acp()
 );
 
-initial
-begin
-	#100 $finish;
-end
+//initial #1500 $finish;
 
 endmodule
