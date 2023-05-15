@@ -49,14 +49,18 @@ module show_number (
 	output [7:0] leds,
 	output [13:0] digs
 );
-reg [4:0]  state;
+reg [5:0]  state;
 reg [7:0]  leds_cp;
 
-assign leds = leds_cp;
+assign leds = leds_cp[7:0];
 
 always @(posedge clk) begin
-	if (reset) state <= 5'b0;
+	if (reset) begin
+		state <= 6'b0;
+		leds_cp <= 8'b0;
+	end
 	else if (btn_flg_show) begin
+		if (state == 6'd32) state <= 6'b0;
 		state <= state + 1'b1;
 	end
 end
@@ -239,6 +243,18 @@ initial #150 btn_gen = 1'b0;
 
 initial begin 
 	#1250 btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
+	#50  btn_show = 1'b0;
+	#50  btn_show = 1'b1;
 	#50  btn_show = 1'b0;
 	#50  btn_show = 1'b1;
 	#50  btn_show = 1'b0;
