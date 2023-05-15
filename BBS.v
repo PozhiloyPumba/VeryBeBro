@@ -1,5 +1,86 @@
 `timescale 10ns/1ns
 
+module main(
+	input clk, 
+	input reset, 
+	input btn_show,
+	input btn_gen,
+	output [7:0]  leds,
+	output [13:0] digs,
+	output [7:0]  acp
+);
+
+wire btn_flg_show;
+wire btn_flg_gen;
+wire [255:0] number;
+
+button_handler_down btn_handler_down_show (
+	.clock(clk),
+	.button_signal(btn_show),
+	.button_flag(btn_flg_show)
+);
+button_handler_down btn_handler_down_gen (
+	.clock(clk),
+	.button_signal(btn_gen),
+	.button_flag(btn_flg_gen)
+);
+number_counter number_counter(
+	.clk(clk),
+	.reset(reset),
+	.btn_flg(btn_flag_gen),
+	.result(number)
+);
+show_number show_number (
+	.clk(clk),
+	.reset(reset),
+	.number(number),
+	.btn_flg_show(btn_flg_show),
+	.leds(leds),
+	.digs(digs)
+);
+
+endmodule
+//==============================================================
+module show_number (
+	input clk, 
+	input reset, 
+	input [255:0] number,
+	input btn_flg_show,
+	output [7:0] leds,
+	output [13:0] digs
+);
+reg [4:0]  state;
+reg [7:0]  leds_cp;
+
+assign leds = leds_cp;
+
+always @(posedge clk) begin
+	if (reset) state <= 5'b0;
+	else if (btn_flg_show) state <= state + 1'b1;
+end
+
+genvar Gi;
+generate 	
+	for(Gi = 0; Gi < 32; Gi = Gi + 1) begin: gen_show_i
+		always @(posedge clk) begin
+			if (Gi == state) begin
+				leds_cp <= number[Gi*8+7:Gi*8];
+			end
+		end
+	end
+endgenerate
+
+hex2digit_hex hex2digit_hex_l(
+	.hex({3'b0, state[4:4]}),
+	.digit(digs[13:7])
+);
+hex2digit_hex hex2digit_hex_r(
+	.hex(state[3:0]),
+	.digit(digs[6:0])
+);
+
+endmodule
+//==============================================================
 module mod_multiplier
 #(
 	parameter SIZE=16,
@@ -7,7 +88,6 @@ module mod_multiplier
 )
 (
 	input [SIZE-1:0] x,
-	input reset,
 	input clk,
 	output [SIZE-1:0] out
 );
@@ -19,80 +99,63 @@ integer i;
 
 always @(posedge clk)
 begin
-	if (reset) tmp1 = {SIZE {1'b0}};
-	else begin
-		tmp1 = {SIZE {1'b0}};
-		for (i = SIZE-1; i >= 0; i = i - 1) begin
-			tmp1 = tmp1 << 1'b1;
-			if (tmp1 >= MOD) tmp1 = tmp1 - MOD;
-			if (x[i]) tmp1 = tmp1 + x;
-			if (tmp1 >= MOD) tmp1 = tmp1 -  MOD;
-    		end
+	tmp1 = {SIZE {1'b0}};
+	for (i = SIZE-1; i >= 0; i = i - 1) begin
+		tmp1 = tmp1 << 1'b1;
+		if (tmp1 >= MOD) tmp1 = tmp1 - MOD;
+		if (x[i]) tmp1 = tmp1 + x;
+		if (tmp1 >= MOD) tmp1 = tmp1 -  MOD;
 	end
 end
 endmodule
-
-
-module main
+//==============================================================
+module number_counter
 (
 	input clk,
 	input reset,
-	output [15:0] result
+	input btn_flg,
+	output [255:0] result
 );
 reg [15:0] seed;
+reg [255:0] number;
+reg [8:0] bcounter;
+wire [15:0] temporary;
+wire btn_flg;
+reg [0:0] flg;
 
-always @(posedge clk) if (reset) seed = 16'd0;
-initial begin
-	#10 seed = 16'd200;
-	#10 seed = 16'd40600;
-	#10 seed = 16'd13089;
-	#10 seed = 16'd884;
+integer j;
+
+assign result = number;
+
+always @(posedge clk) begin
+	if (reset) begin
+		bcounter = {8 {1'b0}};
+		seed     = 16'd884;
+		number   = {256 {1'b0}};
+	end else begin
+		if (btn_flg) flg <= 1'b1;
+		seed <= temporary;
+		if (flg) begin
+			if (bcounter != 9'd256) begin	
+				bcounter <= bcounter + 1'b1;
+				number <= (number << 1) | (seed[0]);
+			end else begin
+				bcounter <= 9'b0;
+				flg <= 1'b0;
+			end
+		end
+	end
 end
 
-mod_multiplier mod_multiplier
-(
+mod_multiplier mod_multiplier (
 	.x(seed),
-	.clk(clk),
-	.reset(reset),
-	.out(result)
+	.clk(clk),	
+	.out(temporary)
 );
 
-endmodule
-
-module test();
-
-reg clk;
-reg reset;
-wire [15:0] result;
-
-initial
-begin
-	#1 clk = 1'b0;
-	#1 reset = 1'b0;
-end
-
-always #1 clk = ~clk;
-initial #3 reset = 1'b1;
-initial #5 reset = 1'b0;
-
-main main
-(
-	.reset(reset),
-	.clk(clk),
-	.result(result)
-);
-
-initial
-begin
-	#15 $display("%d", result);
-	#10 $display("%d", result);
-	#10 $display("%d", result);
-	#10 $display("%d", result);
-	#100 $finish;
-end
 
 endmodule
-
+//==============================================================
 module hex2digit_hex
 #(
 	parameter INVERT = 1
@@ -122,7 +185,7 @@ module hex2digit_hex
 
 	assign digit = (INVERT) ? temp : ~temp;
 endmodule
-
+//==============================================================
 module button_handler_down
 #(
 	parameter INVERT = 1
@@ -143,4 +206,39 @@ begin
 end
 
 	assign button_flag = (~temp_2) & temp_1;
+endmodule
+//==============================================================
+module test();
+
+reg clk;
+reg reset;
+reg btn_gen;
+reg btn_show;
+
+initial
+begin
+	#1 clk = 1'b0;
+	#1 reset = 1'b0;
+end
+
+always #1 clk = ~clk;
+initial #3 reset = 1'b1;
+initial #5 reset = 1'b0;
+
+main main
+(
+	.reset(reset),
+	.clk(clk), 
+	.btn_show(btn_show),
+	.btn_gen(btn_gen),
+	.leds(),
+	.digs(),
+	.acp()
+);
+
+initial
+begin
+	#100 $finish;
+end
+
 endmodule
