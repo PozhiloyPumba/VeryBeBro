@@ -236,6 +236,9 @@ initial #4 reset = 1'b0;
 initial #100 btn_gen = 1'b1;
 initial #150 btn_gen = 1'b0;
 
+initial #1500 btn_gen = 1'b1;
+initial #1550 btn_gen = 1'b0;
+
 initial begin 
 	#1250 btn_show = 1'b1;
 	#50  btn_show = 1'b0;
@@ -266,8 +269,7 @@ main main
 	.btn_show(btn_show),
 	.btn_gen(btn_gen),
 	.leds(),
-	.digs(),
-	.acp()
+	.digs()
 );
 
 //initial #1500 $finish;
