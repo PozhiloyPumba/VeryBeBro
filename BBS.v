@@ -6,8 +6,7 @@ module main(
 	input btn_show,
 	input btn_gen,
 	output [7:0]  leds,
-	output [13:0] digs,
-	output [7:0]  acp
+	output [13:0] digs
 );
 
 wire btn_flg_show;
@@ -98,23 +97,20 @@ module mod_multiplier
 	output [SIZE-1:0] out
 );
 
-reg [SIZE:0] tmp1;
-reg [SIZE:0] tmp2;
-assign out = tmp1[SIZE-1:0];
-//assign tmp = tmp2[SIZE-1:0];
+reg [SIZE:0] tmp;
+assign out = tmp[SIZE-1:0];
 
 integer i;
 
 always @(posedge clk)
 begin
-	tmp2 = {SIZE {1'b0}};
+	tmp = {SIZE {1'b0}};
 	for (i = SIZE-1; i >= 0; i = i - 1) begin
-		tmp2 = tmp2 << 1'b1;
-		if (tmp2 >= MOD) tmp2 = tmp2 - MOD;
-		if (x[i]) tmp2 = tmp2 + x;
-		if (tmp2 >= MOD) tmp2 = tmp2 -  MOD;
+		tmp = tmp << 1'b1;
+		if (tmp >= MOD) tmp = tmp - MOD;
+		if (x[i]) tmp = tmp	+ x;
+		if (tmp >= MOD) tmp = tmp -  MOD;
 	end
-	tmp1 <= tmp2;
 end
 endmodule
 //==============================================================
@@ -164,7 +160,6 @@ mod_multiplier mod_multiplier (
 	.clk(clk),	
 	.out(temporary)
 );
-
 
 endmodule
 //==============================================================
